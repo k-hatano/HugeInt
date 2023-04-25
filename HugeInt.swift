@@ -1,6 +1,7 @@
 import Foundation
 
 infix operator *&
+infix operator ^^
 
 enum HugeIntError: Error {
     case ArithmeticOverflowError
@@ -140,12 +141,12 @@ struct HugeInt: CustomStringConvertible, Equatable, Comparable {
 
     static func *&(lhs: HugeInt, rhs: HugeInt) -> HugeInt {
         var (tmpLhs, tmpRhs) = (lhs, rhs)
-        while (tmpLhs.fraction > Int.max / tmpRhs.fraction) {
+        while (tmpRhs.fraction != 0 && tmpLhs.fraction > Int.max / tmpRhs.fraction) {
             if (tmpLhs.exponent > tmpRhs.exponent || (tmpLhs.exponent == tmpRhs.exponent && tmpLhs.fraction > tmpRhs.fraction)) {
-                tmpLhs.fraction /= 10
+                tmpLhs.fraction = Int(round(Double(tmpLhs.fraction) / 10.0))
                 tmpLhs.exponent += 1
             } else {
-                tmpRhs.fraction /= 10
+                tmpRhs.fraction = Int(round(Double(tmpRhs.fraction) / 10.0))
                 tmpRhs.exponent += 1
             }
         }
@@ -193,6 +194,13 @@ struct HugeInt: CustomStringConvertible, Equatable, Comparable {
                 result = result *& lhsPowerOfRhsOn10
             }
             return result
+        } else if rhs.fraction > 10 {
+            let lhsBy10 = lhs ^ HugeInt(fromInt: 10)
+            let rhsOn10 = HugeInt(fraction: rhs.fraction / 10, exponent: 0)
+            let rhsMod10 = HugeInt(fraction: rhs.fraction % 10, exponent: 0)
+            let fracOfRhsMod10 = rhs.fraction % 10;
+
+            return (lhsBy10 ^ rhsOn10) *& (lhs ^ rhsMod10)
         } else if rhs.fraction > 0 {
             var result = HugeInt(fromInt: 1)
             for _ in 1...rhs.fraction {
@@ -200,7 +208,27 @@ struct HugeInt: CustomStringConvertible, Equatable, Comparable {
             }
             return result
         } else {
-            return lhs
+            return HugeInt(fromInt:1)
+        }
+    }
+
+    static func ^^(lhs: HugeInt, rhs: HugeInt) -> HugeInt {
+        if rhs.exponent > 0 {
+            let rhsOn10 = HugeInt(fraction: rhs.fraction, exponent: rhs.exponent - 1)
+            let lhsPowerOfRhsOn10 = lhs ^ rhsOn10
+            var result = lhsPowerOfRhsOn10
+            for _ in 1..<10 {
+                result = result ^ lhsPowerOfRhsOn10
+            }
+            return result
+        } else if rhs.fraction > 0 {
+            var result = HugeInt(fromInt:1)
+            for _ in 1...rhs.fraction {
+                result = lhs ^ result
+            }
+            return result
+        } else {
+            return HugeInt(fromInt:1)
         }
     }
 
@@ -301,14 +329,25 @@ print("Tp / Na = \(Tp / Na)")
 print("Na / 2 = \(Na / 2)")
 
 for i:Int in 0...100 {
-    let fr = HugeInt.factorial(of: UInt(i))
-    print("\(i)! = \(fr)")
+    let fc = HugeInt.factorial(of: UInt(i))
+    print("\(i)! = \(fc)")
 }
 
 let two = HugeInt(fromInt: 2)
 for i:Int in 0...100 {
     let pw = two ^ HugeInt(fromInt: i)
     print("2 ^ \(i) = \(pw)")
+}
+
+for i:Int in 0...5 {
+    let tr = two ^^ HugeInt(fromInt: i)
+    print("2 ^^ \(i) = \(tr)")
+}
+
+let three = HugeInt(fromInt: 3)
+for i:Int in 0...3 {
+    let tr = three ^^ HugeInt(fromInt: i)
+    print("3 ^^ \(i) = \(tr)")
 }
 
 print(";")
